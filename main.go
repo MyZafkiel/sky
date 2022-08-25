@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 const Link = "https://m.weibo.cn/api/container/getIndex?type=uid&value=6355968578&containerid=1076036355968578"
@@ -63,23 +64,34 @@ func Handle() error {
 		return errors.New("状态码不正确")
 	}
 	for _, card := range body.Data.Cards {
-		if card.Mblog != nil && strings.Contains(card.Mblog.Text, "版本更新") {
-			link := "https://m.weibo.cn/detail/" + card.Mblog.Id
-			//t, err := time.Parse(card.Mblog.CreatedAt, "Tue Aug 23 20:00:04 +0800 2022")
-			//if err != nil {
-			//	return err
-			//}
-
-			fmt.Println(link)
+		if card.Mblog != nil {
+			t, err := time.Parse("Mon Jan 02 15:04:05 -0700 2006", card.Mblog.CreatedAt)
+			if err != nil {
+				continue
+			}
+			//now, _ := time.Parse("Mon Jan 02 15:04:05 -0700 2006", "Tue Aug 23 20:00:04 +0800 2022")
+			now := time.Now()
+			if now.Year() == t.Year() && now.Month() == t.Month() && now.Day() == t.Day() && strings.Contains(card.Mblog.Text, "版本更新") {
+				fmt.Println("检测到版本更新")
+				SendMsg("https://m.weibo.cn/detail/" + card.Mblog.Id)
+			}
 		}
 	}
 	return nil
 }
 
 func main() {
-	//err := Handle()
-
-	//if err != nil {
-	//	panic(err)
-	//}
+	fmt.Println("服务启动")
+	c := time.NewTicker(time.Second * 8)
+	for true {
+		select {
+		case <-c.C:
+			fmt.Println("任务开始")
+			err := Handle()
+			if err != nil {
+				fmt.Println(err)
+			}
+			fmt.Println("任务完成")
+		}
+	}
 }
